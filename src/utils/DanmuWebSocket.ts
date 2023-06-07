@@ -4,46 +4,51 @@ class DanmuWebSocket {
 
     private roomId: (number | string);
 
+    private port: number = 2;
+
     private socket?: WebSocket;
 
     private timer?: number;
 
     private reader?: (FileReader | null);
 
-    constructor(roomId: (number | string)) {
+    // constructor(roomId: (number | string)) {
+    //     this.roomId = roomId;
+    // }
+
+    constructor(roomId: (number | string), port: number) {
         this.roomId = roomId;
+        this.port = port;
     }
 
-    public connect(): Promise<string> {
-        return new Promise((resolve, reject) => {
-            this.socket = new WebSocket(`wss://danmuproxy.douyu.com:850${NumberUtil.getRandom(2, 5)}`);
-            this.socket.onopen = () => {
-                this.socket?.send(this.WebSocketPacket("type@=loginreq/roomid@=" + this.roomId));
-                this.socket?.send(this.WebSocketPacket("type@=joingroup/rid@=" + this.roomId + "/gid@=-9999/"));
-                this.timer = setInterval(() => {
-                    this.socket?.send(this.WebSocketPacket("type@=mrkl/"));
-                }, 40000)
-            };
-            this.socket.onerror = (e) => {
-                reject(e);
-            }
-            this.socket.onmessage = (response) => {
-                this.reader = new FileReader();
-                this.reader.onload = () => {
-                    const messageList = String(this.reader?.result).split("\0"); // 分包
-                    this.reader = null;
-                    for (let i = 0; i < messageList.length; i++) {
-                        if (messageList[i].length > 12) {
-                            resolve(messageList[i]);
-                        }
+    public connect(receivedHandler: (result: string) => void, closeHandler: () => void, errorHandler: (error: Event) => void): void {
+        this.socket = new WebSocket(`wss://danmuproxy.douyu.com:850${this.port}`);
+        this.socket.onopen = () => {
+            this.socket?.send(this.WebSocketPacket("type@=loginreq/roomid@=" + this.roomId));
+            this.socket?.send(this.WebSocketPacket("type@=joingroup/rid@=" + this.roomId + "/gid@=-9999/"));
+            this.timer = setInterval(() => {
+                this.socket?.send(this.WebSocketPacket("type@=mrkl/"));
+            }, 40000)
+        };
+        this.socket.onerror = (e) => {
+            errorHandler(e);
+        }
+        this.socket.onmessage = (response) => {
+            this.reader = new FileReader();
+            this.reader.onload = () => {
+                const messageList = String(this.reader?.result).split("\0"); // 分包
+                this.reader = null;
+                for (let i = 0; i < messageList.length; i++) {
+                    if (messageList[i].length > 12) {
+                        receivedHandler(messageList[i]);
                     }
-                };
-                this.reader.readAsText(response.data);
+                }
             };
-            this.socket.onclose = () => {
-                reject("connection closed");
-            };
-        });
+            this.reader.readAsText(response.data);
+        };
+        this.socket.onclose = () => {
+            closeHandler();
+        };
     }
 
     public close(): void {
@@ -61,12 +66,12 @@ class DanmuWebSocket {
         }
         const p_length = new Uint32Array([bytesArr.length + 4 + 2 + 1 + 1 + 1]); // 消息长度
         const p_type = new Uint32Array([MSG_TYPE]); // 消息类型
-    
+
         buffer.set(new Uint8Array(p_length.buffer), 0);
         buffer.set(new Uint8Array(p_length.buffer), 4);
         buffer.set(new Uint8Array(p_type.buffer), 8);
         buffer.set(p_content, 12);
-    
+
         return buffer;
     }
 
