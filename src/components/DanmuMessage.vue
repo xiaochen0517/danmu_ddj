@@ -1,23 +1,22 @@
 <template>
     <div class="danmu-message">
-        <div class="user-level">{{ props.message.level }}</div>
-        <div v-if="props.message.bl > 0" class="fans-card">{{ props.message.bl }} {{ props.message.bnn }}</div>
-        <div class="user-name">{{ props.message.nn }} :</div>
-        <div class="message"> {{ props.message.txt }}</div>
+        <div class="user-level">{{ message.level }}</div>
+        <div v-if="message.bl > 0" class="fans-card">{{ message.bl }} {{ message.bnn }}</div>
+        <div class="user-name">{{ message.nn }} :</div>
+        <div class="message"> {{ message.txt }}</div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, defineProps as vueDefineProps } from 'vue';
+import { onMounted, defineProps } from 'vue';
 
 import DanmuObject from '@/class/danmu/DanmuObject';
 
-const props = vueDefineProps({
-    message: {
-        type: Object as () => DanmuObject,
-        required: true
-    }
-});
+interface Props {
+    message: DanmuObject
+}
+
+const props = defineProps<Props>();
 
 onMounted(() => {
     console.log(props.message);
